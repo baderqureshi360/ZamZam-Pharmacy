@@ -37,6 +37,10 @@ export interface StockBatch {
   supplier: string | null;
   created_by: string | null;
   created_at: string;
+  product?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 export function useProducts() {
@@ -119,7 +123,7 @@ export function useProducts() {
       // Optimize query - select only required fields for better performance
       const { data, error: queryError } = await supabase
         .from('stock_batches')
-        .select('id, product_id, batch_number, quantity, cost_price, selling_price, expiry_date, purchase_date, supplier, created_by, created_at')
+        .select('id, product_id, batch_number, quantity, cost_price, selling_price, expiry_date, purchase_date, supplier, created_by, created_at, product:products(id, name)')
         .order('expiry_date')
         .limit(MAX_RECORDS_PER_QUERY);
 
@@ -195,18 +199,8 @@ export function useProducts() {
         },
         (payload) => {
           // Use incremental updates for better performance
-          if (payload.eventType === 'INSERT' && payload.new) {
-            setBatches((prev) => {
-              const exists = prev.some(b => b.id === payload.new.id);
-              if (exists) return prev;
-              const updated = [...prev, payload.new as StockBatch];
-              return updated.sort((a, b) => a.expiry_date.localeCompare(b.expiry_date));
-            });
-          } else if (payload.eventType === 'UPDATE' && payload.new) {
-            setBatches((prev) =>
-              prev.map((b) => (b.id === payload.new.id ? payload.new as StockBatch : b))
-                .sort((a, b) => a.expiry_date.localeCompare(b.expiry_date))
-            );
+          if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && payload.new) {
+            fetchBatches();
           } else if (payload.eventType === 'DELETE' && payload.old) {
             setBatches((prev) => prev.filter((b) => b.id !== payload.old.id));
           } else {
@@ -764,7 +758,7 @@ export function useProducts() {
           ...batch,
           created_by: user.id,
         })
-        .select()
+        .select('id, product_id, batch_number, quantity, cost_price, selling_price, expiry_date, purchase_date, supplier, created_by, created_at, product:products(id, name)')
         .single();
 
       if (insertError) {

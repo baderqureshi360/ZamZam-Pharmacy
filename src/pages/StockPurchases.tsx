@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +49,7 @@ export default function StockPurchases() {
   const [search, setSearch] = useState('');
   // Store the selected product object to persist display even when search results change
   const [savedSelectedProduct, setSavedSelectedProduct] = useState<Product | null>(null);
+  const missingProductBatchIds = useRef<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     productId: '',
     batchNumber: '',
@@ -70,6 +71,17 @@ export default function StockPurchases() {
 
   const today = startOfToday();
   const selectedProduct = products.find((p) => p.id === formData.productId) || (savedSelectedProduct?.id === formData.productId ? savedSelectedProduct : undefined);
+
+  useEffect(() => {
+    const missingBatches = batches.filter((batch) => !batch.product?.id);
+    if (missingBatches.length === 0) return;
+    const newMissing = missingBatches.filter((batch) => !missingProductBatchIds.current.has(batch.id));
+    if (newMissing.length === 0) return;
+    newMissing.forEach((batch) => missingProductBatchIds.current.add(batch.id));
+    toast.error('Missing product data for some batches', {
+      description: 'Please verify stock batch product references in the database.',
+    });
+  }, [batches]);
 
   // Filter products by search term (name, barcode, and salt_formula)
   // Note: Stock Purchases shows all products (including disabled) for inventory management
@@ -108,6 +120,12 @@ export default function StockPurchases() {
     
     if (!selectedProduct) {
       toast.error('Please select a product');
+      return;
+    }
+
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(formData.productId)) {
+      toast.error('Invalid product selection');
       return;
     }
 
@@ -262,7 +280,6 @@ export default function StockPurchases() {
             </TableHeader>
             <TableBody>
               {sortedBatches.map((batch) => {
-                const product = products.find(p => p.id === batch.product_id);
                 return (
                   <TableRow key={batch.id} className="hover:bg-muted/30">
                     <TableCell>
@@ -270,7 +287,7 @@ export default function StockPurchases() {
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                           <Package className="w-5 h-5 text-primary" />
                         </div>
-                        <span className="font-medium">{product?.name || 'Unknown Product'}</span>
+                        <span className="font-medium">{batch.product?.name || ''}</span>
                       </div>
                     </TableCell>
                     <TableCell>
