@@ -64,8 +64,7 @@ const categories = [
   'Mouth Ulcer',
   'Nasal Drops',
   'Anti Scabies',
-  'Anxiolytic/Anti Depresent',
-  'Anxilytic/ Antidepressant',
+  'Anxiolytic / Antidepressant',
   'Other',
 ];
 
@@ -166,17 +165,14 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       return;
     }
 
-    // Validate rack selection (required)
-    if (!formData.rack_id || formData.rack_id.trim() === '') {
-      toast.error('Please select a rack for this product');
-      return;
-    }
-
-    // Validate rack exists
-    const selectedRack = racks.find(r => r.id === formData.rack_id);
-    if (!selectedRack) {
-      toast.error('Selected rack is invalid. Please select a valid rack.');
-      return;
+    // Validate rack selection (optional)
+    if (formData.rack_id && formData.rack_id.trim() !== '') {
+      // Validate rack exists if selected
+      const selectedRack = racks.find(r => r.id === formData.rack_id);
+      if (!selectedRack) {
+        toast.error('Selected rack is invalid. Please select a valid rack.');
+        return;
+      }
     }
 
     // Validate min_stock is a valid number
@@ -228,7 +224,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       min_stock: minStock,
       manufacturer: formData.manufacturer?.trim() || null,
       salt_formula: formData.salt_formula?.trim() || null,
-      rack_id: formData.rack_id, // Required - always a valid rack.id
+      rack_id: formData.rack_id || null, // Optional - null if not selected
+      is_active: product?.is_active ?? true, // Maintain existing status or default to active
     });
   };
 
@@ -259,12 +256,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="dosageForm">Dosage Form</Label>
+            <Label htmlFor="dosage_form">Dosage Form</Label>
             <Select
               value={formData.dosage_form || ''}
               onValueChange={(value) => setFormData({ ...formData, dosage_form: value })}
             >
-              <SelectTrigger>
+              <SelectTrigger id="dosage_form">
                 <SelectValue placeholder="Select form" />
               </SelectTrigger>
               <SelectContent>
@@ -288,7 +285,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   // This allows both manual entry and scanner input
                   if (e.key === 'Enter' && formData.barcode.trim()) {
                     e.preventDefault();
-                    // Barcode is ready - form will handle it on submit
+                    // Move focus to Category select trigger
+                    const categoryTrigger = document.getElementById('category');
+                    if (categoryTrigger) {
+                      categoryTrigger.focus();
+                    }
                   }
                 }}
                 placeholder="Scan barcode or enter manually (leave empty to auto-generate)"
@@ -326,7 +327,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               value={formData.category || ''}
               onValueChange={(value) => setFormData({ ...formData, category: value })}
             >
-              <SelectTrigger>
+              <SelectTrigger id="category">
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
@@ -339,7 +340,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="rack_id">Rack / Section <span className="text-destructive">*</span></Label>
+            <Label htmlFor="rack_id">Rack / Section</Label>
             {racks.length === 0 ? (
               <div className="p-3 bg-muted/50 rounded-lg border border-border">
                 <p className="text-sm text-muted-foreground">
@@ -351,18 +352,18 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <Select
                   value={formData.rack_id && formData.rack_id.trim() !== '' ? formData.rack_id : ''}
                   onValueChange={(value) => {
-                    if (value && value.trim() !== '') {
+                    if (value && value !== 'none' && value.trim() !== '') {
                       setFormData({ ...formData, rack_id: value });
                     } else {
                       setFormData({ ...formData, rack_id: '' });
                     }
                   }}
-                  required
                 >
-                  <SelectTrigger className={!formData.rack_id ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Search or select rack" />
+                  <SelectTrigger id="rack_id">
+                    <SelectValue placeholder="Search or select rack (Optional)" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">None (Optional)</SelectItem>
                     {racks
                       .filter(rack => rack && rack.id && rack.id.trim() !== '')
                       .map((rack) => (
@@ -381,9 +382,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                       ))}
                   </SelectContent>
                 </Select>
-                {!formData.rack_id && (
-                  <p className="text-xs text-destructive">Rack selection is required</p>
-                )}
               </>
             )}
           </div>

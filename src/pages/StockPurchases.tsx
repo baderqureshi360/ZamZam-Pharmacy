@@ -113,6 +113,11 @@ export default function StockPurchases() {
     });
     setSavedSelectedProduct(product);
     setOpen(false);
+    
+    // Focus the batch number field after selection
+    setTimeout(() => {
+      document.getElementById('batchNumber')?.focus();
+    }, 100);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

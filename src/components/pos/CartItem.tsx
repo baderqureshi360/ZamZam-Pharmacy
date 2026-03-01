@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { SaleItem } from '@/types/pharmacy';
 import { formatPKR } from '@/lib/currency';
 
@@ -23,16 +24,40 @@ export const CartItem = memo(function CartItem({ item, onUpdateQuantity, onRemov
           <Button
             variant="outline"
             size="icon"
+            type="button"
             className="h-9 w-9 sm:h-8 sm:w-8 rounded-lg flex-shrink-0"
             onClick={() => onUpdateQuantity(item.quantity - 1)}
             disabled={item.quantity <= 1}
           >
             <Minus className="w-4 h-4" />
           </Button>
-          <span className="w-10 sm:w-8 text-center font-semibold">{item.quantity}</span>
+          <Input
+            type="number"
+            min="1"
+            value={item.quantity}
+            data-qty-id={item.productId}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              if (!isNaN(val) && val >= 1) {
+                onUpdateQuantity(val);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                // Focus the search input in the parent component
+                const searchInput = document.querySelector('input[placeholder*="Search products"]') as HTMLInputElement;
+                if (searchInput) {
+                  searchInput.focus();
+                }
+              }
+            }}
+            className="w-16 h-9 sm:h-8 text-center font-semibold px-1"
+          />
           <Button
             variant="outline"
             size="icon"
+            type="button"
             className="h-9 w-9 sm:h-8 sm:w-8 rounded-lg flex-shrink-0"
             onClick={() => onUpdateQuantity(item.quantity + 1)}
           >
@@ -47,6 +72,7 @@ export const CartItem = memo(function CartItem({ item, onUpdateQuantity, onRemov
         <Button
           variant="ghost"
           size="icon"
+          type="button"
           className="h-9 w-9 sm:h-8 sm:w-8 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg flex-shrink-0"
           onClick={onRemove}
         >

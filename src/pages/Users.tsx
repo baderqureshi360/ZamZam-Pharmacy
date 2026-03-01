@@ -34,13 +34,13 @@ interface UserWithRole {
   id_card_number: string | null;
   address: string | null;
   email?: string;
-  role: 'admin' | 'cashier';
+  role: 'admin' | 'cashier' | 'owner';
   can_add_products: boolean;
   created_at: string;
 }
 
 export default function Users() {
-  const { isAdmin, user } = useAuth();
+  const { isOwner, user } = useAuth();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
@@ -164,7 +164,7 @@ export default function Users() {
     }
   };
 
-  if (!isAdmin) {
+  if (!isOwner) {
     return <Navigate to="/" replace />;
   }
 
@@ -211,9 +211,9 @@ export default function Users() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {users.filter((u) => u.role === 'admin').length}
+                  {users.filter((u) => u.role === 'admin' || u.role === 'owner').length}
                 </p>
-                <p className="text-sm text-muted-foreground">Admins</p>
+                <p className="text-sm text-muted-foreground">Admins / Owners</p>
               </div>
             </div>
           </CardContent>
@@ -266,10 +266,10 @@ export default function Users() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={u.role === 'admin' ? 'default' : 'secondary'}
+                        variant={(u.role === 'admin' || u.role === 'owner') ? 'default' : 'secondary'}
                         className="capitalize"
                       >
-                        {u.role === 'admin' && <Shield className="w-3 h-3 mr-1" />}
+                        {(u.role === 'admin' || u.role === 'owner') && <Shield className="w-3 h-3 mr-1" />}
                         {u.role}
                       </Badge>
                     </TableCell>
@@ -283,8 +283,8 @@ export default function Users() {
                       {u.role === 'cashier' ? (
                         <Switch
                           checked={u.can_add_products}
-                          onCheckedChange={() =>
-                            toggleProductPermission(u.id, u.can_add_products)
+                          onCheckedChange={(checked) =>
+                            toggleProductPermission(u.id, !checked)
                           }
                         />
                       ) : (
@@ -317,19 +317,28 @@ export default function Users() {
               Update user information and permissions.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleUpdate();
+            }} 
+            className="space-y-4"
+          >
             <div className="space-y-2">
-              <Label>Full Name</Label>
+              <Label htmlFor="full_name">Full Name</Label>
               <Input
+                id="full_name"
                 value={editForm.full_name}
                 onChange={(e) =>
                   setEditForm({ ...editForm, full_name: e.target.value })
                 }
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label>Phone Number</Label>
+              <Label htmlFor="phone">Phone Number</Label>
               <Input
+                id="phone"
                 value={editForm.phone}
                 onChange={(e) =>
                   setEditForm({ ...editForm, phone: e.target.value })
@@ -338,8 +347,9 @@ export default function Users() {
               />
             </div>
             <div className="space-y-2">
-              <Label>ID Card Number</Label>
+              <Label htmlFor="id_card">ID Card Number</Label>
               <Input
+                id="id_card"
                 value={editForm.id_card_number}
                 onChange={(e) =>
                   setEditForm({ ...editForm, id_card_number: e.target.value })
@@ -348,8 +358,9 @@ export default function Users() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Address</Label>
+              <Label htmlFor="address">Address</Label>
               <Input
+                id="address"
                 value={editForm.address}
                 onChange={(e) =>
                   setEditForm({ ...editForm, address: e.target.value })
@@ -366,6 +377,7 @@ export default function Users() {
                   </p>
                 </div>
                 <Switch
+                  id="can_add_products"
                   checked={editForm.can_add_products}
                   onCheckedChange={(checked) =>
                     setEditForm({ ...editForm, can_add_products: checked })
@@ -373,10 +385,10 @@ export default function Users() {
                 />
               </div>
             )}
-            <Button onClick={handleUpdate} className="w-full">
+            <Button type="submit" className="w-full">
               Save Changes
             </Button>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </MainLayout>

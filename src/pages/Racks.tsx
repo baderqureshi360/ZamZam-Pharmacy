@@ -138,13 +138,21 @@ export default function Racks() {
                   Create a new rack or section to organize your products.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleAdd();
+                }} 
+                className="space-y-4"
+              >
                 <div className="space-y-2">
-                  <Label>Rack Name</Label>
+                  <Label htmlFor="rack-name">Rack Name</Label>
                   <Input
+                    id="rack-name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g., A, B, C or Shelf 1"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -164,8 +172,9 @@ export default function Racks() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Description (Optional)</Label>
+                  <Label htmlFor="rack-desc">Description (Optional)</Label>
                   <Input
+                    id="rack-desc"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="e.g., Pain Relief Section"
@@ -175,11 +184,11 @@ export default function Racks() {
                   <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)} className="w-full sm:w-auto">
                     Cancel
                   </Button>
-                  <Button onClick={handleAdd} className="w-full sm:w-auto">
+                  <Button type="submit" className="w-full sm:w-auto">
                     Add Rack
                   </Button>
                 </div>
-              </div>
+              </form>
             </DialogContent>
           </Dialog>
         )}
@@ -398,14 +407,22 @@ export default function Racks() {
                 Update rack information below.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleUpdate();
+              }} 
+              className="space-y-4"
+            >
               <div className="space-y-2">
-                <Label>Rack Name</Label>
+                <Label htmlFor="edit-rack-name">Rack Name</Label>
                 <Input
+                  id="edit-rack-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., A, B, C"
                   className="h-10 sm:h-9"
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -425,8 +442,9 @@ export default function Racks() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Description</Label>
+                <Label htmlFor="edit-rack-desc">Description</Label>
                 <Input
+                  id="edit-rack-desc"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="e.g., Pain Relief Section"
@@ -437,11 +455,11 @@ export default function Racks() {
                 <Button type="button" variant="outline" onClick={() => setEditingRack(null)} className="w-full sm:w-auto">
                   Cancel
                 </Button>
-                <Button onClick={handleUpdate} className="w-full sm:w-auto">
+                <Button type="submit" className="w-full sm:w-auto">
                   Save Changes
                 </Button>
               </div>
-            </div>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

@@ -152,6 +152,15 @@ export default function PointOfSale() {
       }]);
     }
 
+    // Focus the quantity input for the newly added item
+    setTimeout(() => {
+      const qtyInput = document.querySelector(`input[data-qty-id="${product.id}"]`) as HTMLInputElement;
+      if (qtyInput) {
+        qtyInput.focus();
+        qtyInput.select();
+      }
+    }, 50);
+
     // Show product details including rack location
     const productDetails = [
       `Product: ${product.name}${product.strength ? ` ${product.strength}` : ''}`,
@@ -299,6 +308,46 @@ export default function PointOfSale() {
   const finalTotal = Math.max(0, subtotal - discountAmount);
   const itemCount = Array.isArray(cart) ? cart.reduce((sum, item) => sum + (item?.quantity || 0), 0) : 0;
 
+  // Add keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts if user is typing in an input
+      const target = e.target as HTMLElement;
+      const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+
+      if (e.key === 'F1' && cart.length > 0) {
+        e.preventDefault();
+        handleCheckout('cash');
+      } else if (e.key === 'F2' && cart.length > 0) {
+        e.preventDefault();
+        handleCheckout('card');
+      } else if (e.key === 'F3' && cart.length > 0) {
+        e.preventDefault();
+        handleCheckout('mobile');
+      } else if (e.key === 'F4' && cart.length > 0) {
+        e.preventDefault();
+        handleClearCart();
+      } else if (e.key === 'Escape') {
+        if (showConfirmation) {
+          setShowConfirmation(false);
+          setPendingPaymentMethod(null);
+        } else if (showReceiptDialog) {
+          setShowReceiptDialog(false);
+          setReceiptData(null);
+        }
+      } else if (e.key === 'Enter' && showConfirmation && pendingPaymentMethod) {
+        e.preventDefault();
+        handleFinalizeOrder(pendingPaymentMethod);
+      } else if (e.key === 'Enter' && showReceiptDialog) {
+        e.preventDefault();
+        handlePrint();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cart, showConfirmation, showReceiptDialog, pendingPaymentMethod]);
+
   return (
     <MainLayout>
       <div className="p-4 sm:p-6 lg:p-8 h-[calc(100vh-4rem)] lg:h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
@@ -334,6 +383,23 @@ export default function PointOfSale() {
                   placeholder="Search products by name..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && search.trim() !== '') {
+                      // If it's a barcode, add it
+                      const product = getProductByBarcode(search.trim());
+                      if (product && product.barcode) {
+                        handleScan(product.barcode);
+                        setSearch('');
+                      } else if (filteredProducts.length === 1) {
+                        // If only one product matches the search, add it
+                        const firstProduct = filteredProducts[0];
+                        if (firstProduct.barcode) {
+                          handleScan(firstProduct.barcode);
+                          setSearch('');
+                        }
+                      }
+                    }
+                  }}
                   className="pl-10 h-12 text-lg"
                   autoFocus
                 />
@@ -536,26 +602,35 @@ export default function PointOfSale() {
                 <Button
                   onClick={() => handleCheckout('cash')}
                   disabled={cart.length === 0}
-                  className="btn-checkout bg-primary hover:bg-primary/90 h-12 sm:h-auto py-3 sm:py-4"
+                  className="btn-checkout bg-primary hover:bg-primary/90 h-12 sm:h-auto py-3 sm:py-4 flex flex-col items-center gap-1"
                 >
-                  <Banknote className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="text-xs">Cash</span>
+                  <div className="flex items-center gap-2">
+                    <Banknote className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-xs">Cash</span>
+                  </div>
+                  <span className="text-[10px] opacity-70 hidden sm:inline">(F1)</span>
                 </Button>
                 <Button
                   onClick={() => handleCheckout('card')}
                   disabled={cart.length === 0}
-                  className="btn-checkout bg-primary hover:bg-primary/90 h-12 sm:h-auto py-3 sm:py-4"
+                  className="btn-checkout bg-primary hover:bg-primary/90 h-12 sm:h-auto py-3 sm:py-4 flex flex-col items-center gap-1"
                 >
-                  <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="text-xs">Card</span>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-xs">Card</span>
+                  </div>
+                  <span className="text-[10px] opacity-70 hidden sm:inline">(F2)</span>
                 </Button>
                 <Button
                   onClick={() => handleCheckout('mobile')}
                   disabled={cart.length === 0}
-                  className="btn-checkout bg-primary hover:bg-primary/90 h-12 sm:h-auto py-3 sm:py-4"
+                  className="btn-checkout bg-primary hover:bg-primary/90 h-12 sm:h-auto py-3 sm:py-4 flex flex-col items-center gap-1"
                 >
-                  <Smartphone className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="text-xs">Mobile</span>
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-xs">Mobile</span>
+                  </div>
+                  <span className="text-[10px] opacity-70 hidden sm:inline">(F3)</span>
                 </Button>
               </div>
             </div>
@@ -616,10 +691,10 @@ export default function PointOfSale() {
               setShowConfirmation(false);
               setPendingPaymentMethod(null);
             }}>
-              Add More
+              Add More (Esc)
             </AlertDialogCancel>
             <AlertDialogAction onClick={() => pendingPaymentMethod && handleFinalizeOrder(pendingPaymentMethod)}>
-              Confirm Order
+              Confirm Order (Enter)
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -667,9 +742,12 @@ export default function PointOfSale() {
               </div>
             )}
             
-            <Button onClick={handlePrint} className="w-full no-print">
-              <Printer className="w-4 h-4 mr-2" />
-              Print Receipt
+            <Button onClick={handlePrint} className="w-full no-print flex flex-col items-center gap-1 h-auto py-3">
+              <div className="flex items-center gap-2">
+                <Printer className="w-4 h-4" />
+                <span>Print Receipt</span>
+              </div>
+              <span className="text-[10px] opacity-70">(Enter)</span>
             </Button>
           </div>
         </DialogContent>

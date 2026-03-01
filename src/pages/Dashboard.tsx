@@ -16,6 +16,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function Dashboard() {
   const { products, getProductStock, getExpiringBatches, getExpiredBatches } = useProducts();
@@ -62,6 +71,12 @@ export default function Dashboard() {
       return stock <= (p.min_stock || 0) && stock > 0;
     });
 
+    const allLowStockProducts = safeProducts.filter((p) => {
+      if (!p || !p.id) return false;
+      const stock = getProductStock(p.id);
+      return stock <= (p.min_stock || 0);
+    });
+
     const outOfStockProducts = safeProducts.filter((p) => {
       if (!p || !p.id) return false;
       return getProductStock(p.id) <= 0;
@@ -75,7 +90,10 @@ export default function Dashboard() {
       expiringCount: safeExpiringBatches.length,
       expiredCount: safeExpiredBatches.length,
       lowStockProducts,
+      allLowStockProducts,
       outOfStockProducts,
+      expiringBatches: safeExpiringBatches,
+      expiredBatches: safeExpiredBatches,
     };
   }, [products, sales, today, getProductStock, expiringBatches, expiredBatches, totalProductCount]);
 
@@ -136,9 +154,51 @@ export default function Dashboard() {
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-destructive text-sm sm:text-base">Expired Stock Alert</h3>
-                <p className="text-xs sm:text-sm text-destructive/80">
+                <p className="text-xs sm:text-sm text-destructive/80 mb-2">
                   {stats.expiredCount} batch(es) have expired and cannot be sold. Consider disposing of expired stock.
                 </p>
+                
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="h-8 text-xs">
+                      View Expired Items
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Expired Stock Items</DialogTitle>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[60vh]">
+                      {stats.expiredBatches.length > 0 ? (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Product Name</TableHead>
+                              <TableHead>Batch Number</TableHead>
+                              <TableHead>Expiry Date</TableHead>
+                              <TableHead className="text-right">Qty</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {stats.expiredBatches.map((batch) => {
+                              const product = products.find(p => p.id === batch.product_id);
+                              return (
+                                <TableRow key={batch.id}>
+                                  <TableCell className="font-medium">{product?.name || 'Unknown Product'}</TableCell>
+                                  <TableCell>{batch.batch_number || 'N/A'}</TableCell>
+                                  <TableCell>{batch.expiry_date ? format(parseISO(batch.expiry_date), 'MMM d, yyyy') : 'N/A'}</TableCell>
+                                  <TableCell className="text-right">{batch.quantity}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <div className="text-center py-6 text-muted-foreground">No expired items found.</div>
+                      )}
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
             <button
@@ -154,11 +214,54 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Low Stock Alert */}
           <div className="bg-card rounded-2xl border border-border/60 p-4 sm:p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4 sm:mb-5">
-              <div className="w-10 h-10 rounded-xl bg-warning/15 flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="w-5 h-5 text-warning" />
+            <div className="flex items-center justify-between mb-4 sm:mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-warning/15 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-warning" />
+                </div>
+                <h2 className="text-base sm:text-lg font-semibold text-foreground">Low Stock Alert</h2>
               </div>
-              <h2 className="text-base sm:text-lg font-semibold text-foreground">Low Stock Alert</h2>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                    View All
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Low Stock Items</DialogTitle>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[60vh]">
+                    {stats.allLowStockProducts.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Product Name</TableHead>
+                            <TableHead className="text-right">Current Stock</TableHead>
+                            <TableHead className="text-right">Min Stock</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {stats.allLowStockProducts.map((product) => {
+                            const stock = getProductStock(product.id);
+                            return (
+                              <TableRow key={product.id}>
+                                <TableCell className="font-medium">{product.name || 'Unknown Product'}</TableCell>
+                                <TableCell className="text-right">
+                                  <Badge variant={stock <= 0 ? "destructive" : "warning"}>{stock}</Badge>
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground">{product.min_stock ?? 0}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="text-center py-6 text-muted-foreground">All stock levels are sufficient.</div>
+                    )}
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
             </div>
             {stats.lowStockProducts.length > 0 ? (
               <div className="overflow-x-auto">
@@ -202,11 +305,56 @@ export default function Dashboard() {
 
           {/* Expiring Soon */}
           <div className="bg-card rounded-2xl border border-border/60 p-4 sm:p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4 sm:mb-5">
-              <div className="w-10 h-10 rounded-xl bg-destructive/15 flex items-center justify-center flex-shrink-0">
-                <Clock className="w-5 h-5 text-destructive" />
+            <div className="flex items-center justify-between mb-4 sm:mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-destructive/15 flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-5 h-5 text-destructive" />
+                </div>
+                <h2 className="text-base sm:text-lg font-semibold text-foreground">Expiring Soon (30 days)</h2>
               </div>
-              <h2 className="text-base sm:text-lg font-semibold text-foreground">Expiring Soon (30 days)</h2>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                    View All
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Expiring Soon (30 Days)</DialogTitle>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[60vh]">
+                    {stats.expiringBatches.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Product Name</TableHead>
+                            <TableHead>Expiry Date</TableHead>
+                            <TableHead className="text-right">Qty Remaining</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {stats.expiringBatches.map((batch) => {
+                            const product = products.find(p => p.id === batch.product_id);
+                            return (
+                              <TableRow key={batch.id}>
+                                <TableCell className="font-medium">{product?.name || 'Unknown Product'}</TableCell>
+                                <TableCell>
+                                  <Badge className="bg-warning text-warning-foreground">
+                                    {batch.expiry_date ? format(parseISO(batch.expiry_date), 'MMM d, yyyy') : 'N/A'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">{batch.quantity}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="text-center py-6 text-muted-foreground">No batches expiring soon!</div>
+                    )}
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
             </div>
             {expiringBatches.length > 0 ? (
               <div className="overflow-x-auto">

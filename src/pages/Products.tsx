@@ -173,6 +173,12 @@ export default function Products() {
                   placeholder="Search products by name..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      // Trigger search immediately if needed, 
+                      // although it's already debounced
+                    }
+                  }}
                   className="pl-10 h-10 sm:h-9"
                 />
               </div>

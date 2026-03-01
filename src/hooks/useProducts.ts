@@ -276,11 +276,6 @@ export function useProducts() {
         return null;
       }
 
-      if (!product.rack_id || (typeof product.rack_id === 'string' && product.rack_id.trim() === '')) {
-        toast.error('Rack assignment is required');
-        return null;
-      }
-
       // Validate min_stock is a number
       if (typeof product.min_stock !== 'number' || isNaN(product.min_stock) || product.min_stock < 0) {
         toast.error('Minimum stock must be a valid number');
